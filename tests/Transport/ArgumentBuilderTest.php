@@ -12,6 +12,9 @@ use Develate\AntigravityCli\Transport\RunMode;
 use Develate\AntigravityCli\Transport\RunRequest;
 use Develate\AntigravityCli\Value\Effort;
 use Develate\AntigravityCli\Value\ExecutionMode;
+use Develate\AntigravityCli\Value\ModelCapabilities;
+use Develate\AntigravityCli\Value\ModelInfo;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class ArgumentBuilderTest extends TestCase
@@ -37,7 +40,7 @@ final class ArgumentBuilderTest extends TestCase
         $command = (new ArgumentBuilder)->stream($this->request(
             session: new SessionOptions(
                 cwd: '/tmp/p',
-                model: 'gemini-3.8-flash-low',
+                model: 'gemini-3.8-flash',
                 effort: Effort::High,
                 mode: ExecutionMode::AcceptEdits,
                 sandbox: true,
@@ -51,12 +54,97 @@ final class ArgumentBuilderTest extends TestCase
             }
         }
 
-        self::assertContains('--model=gemini-3.8-flash-low', $command);
+        self::assertContains('--model=gemini-3.8-flash', $command);
         self::assertContains('--effort=high', $command);
         self::assertContains('--mode=accept-edits', $command);
         self::assertContains('--sandbox', $command);
         self::assertContains('--add-dir=/tmp/a', $command);
         self::assertContains('--add-dir=/tmp/b', $command);
+    }
+
+    #[DataProvider('modelsWithoutAdjustableEffort')]
+    public function test_fixed_models_omit_saved_effort_on_new_and_resumed_commands(string $model): void
+    {
+        $options = new SessionOptions(
+            model: $model,
+            effort: Effort::High,
+            agent: 'reviewer',
+            mode: ExecutionMode::AcceptEdits,
+            sandbox: true,
+            additionalDirectories: ['/tmp/extra'],
+        );
+
+        foreach ([RunMode::Start, RunMode::Resume] as $mode) {
+            $command = (new ArgumentBuilder)->stream($this->request(
+                mode: $mode,
+                conversationId: 'saved-conversation',
+                session: $options,
+                run: new RunOptions(printTimeout: 12.0, schema: ['type' => 'object']),
+            ));
+
+            self::assertSame([
+                'agy', '--print=', '--input-format=stream-json', '--output-format=stream-json',
+                ...($mode === RunMode::Resume ? ['--conversation=saved-conversation'] : []),
+                '--model='.$model, '--agent=reviewer', '--mode=accept-edits', '--sandbox',
+                '--add-dir=/tmp/extra', '--print-timeout=12s', '--json-schema={"type":"object"}',
+            ], $command);
+        }
+
+        self::assertFalse(ModelCapabilities::supportsReasoningEffort($model));
+        self::assertFalse((new ModelInfo($model, 'Display name'))->supportsReasoningEffort());
+        self::assertSame(Effort::High, $options->effort);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function modelsWithoutAdjustableEffort(): iterable
+    {
+        foreach ([
+            'claude-opus-4-6-thinking', 'CLAUDE-OPUS-4-6-THINKING', 'claude-sonnet-4-6',
+            'gemini-3.8-flash-low', 'gemini-3.8-flash-medium', 'gemini-3.8-flash-high',
+            'GEMINI-3.1-PRO-HIGH', 'gemini-future-medium',
+        ] as $model) {
+            yield $model => [$model];
+        }
+    }
+
+    #[DataProvider('modelsWithAdjustableEffort')]
+    public function test_supported_and_unknown_models_preserve_effort_without_discovery(?string $model): void
+    {
+        $command = (new ArgumentBuilder)->stream($this->request(
+            session: new SessionOptions(model: $model, effort: Effort::High),
+        ));
+
+        self::assertSame([
+            'agy', '--print=', '--input-format=stream-json', '--output-format=stream-json',
+            ...($model !== null && $model !== '' ? ['--model='.$model] : []),
+            '--effort=high',
+        ], $command);
+        self::assertTrue(ModelCapabilities::supportsReasoningEffort($model));
+        self::assertTrue((new ModelInfo($model ?? '', 'Display name'))->supportsReasoningEffort());
+    }
+
+    /** @return iterable<string, array{?string}> */
+    public static function modelsWithAdjustableEffort(): iterable
+    {
+        yield 'null default' => [null];
+        yield 'empty default' => [''];
+        foreach ([
+            'gemini-3.8-flash', 'gemini-3.1-pro', 'custom-model', 'custom-high',
+            'vendor/custom-thinking', 'claude-future-thinking', 'claude-opus-4-6',
+            'gpt-oss-120b-medium',
+        ] as $model) {
+            yield $model => [$model];
+        }
+    }
+
+    public function test_no_selected_effort_adds_no_flag_for_a_supported_model(): void
+    {
+        self::assertSame([
+            'agy', '--print=', '--input-format=stream-json', '--output-format=stream-json',
+            '--model=gemini-3.8-flash',
+        ], (new ArgumentBuilder)->stream($this->request(
+            session: new SessionOptions(model: 'gemini-3.8-flash'),
+        )));
     }
 
     public function test_resuming_names_the_conversation_explicitly(): void

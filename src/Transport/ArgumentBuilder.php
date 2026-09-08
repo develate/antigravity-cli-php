@@ -7,6 +7,7 @@ namespace Develate\AntigravityCli\Transport;
 use Develate\AntigravityCli\Exception\InvalidOptions;
 use Develate\AntigravityCli\RunOptions;
 use Develate\AntigravityCli\SessionOptions;
+use Develate\AntigravityCli\Value\ModelCapabilities;
 
 /**
  * Builds the `agy` command line.
@@ -98,7 +99,7 @@ final readonly class ArgumentBuilder
         if ($session->model !== null && $session->model !== '') {
             $flags[] = '--model='.$session->model;
         }
-        if ($session->effort !== null) {
+        if ($session->effort !== null && ModelCapabilities::supportsReasoningEffort($session->model)) {
             $flags[] = '--effort='.$session->effort->value;
         }
         if ($session->agent !== null) {

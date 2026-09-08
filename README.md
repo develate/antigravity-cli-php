@@ -42,7 +42,7 @@ use Develate\AntigravityCli\Value\Effort;
 $agy = (new Antigravity('agy'))->in('/srv/project');
 
 $options = new SessionOptions(
-    model: 'gemini-3.1-pro-high',
+    model: 'gemini-3.1-pro',
     effort: Effort::High,
 );
 
@@ -173,6 +173,43 @@ $agy->capabilities()->require(Capability::InteractiveApproval); // throws Unsupp
 
 Unsupported: interactive approval, image input, forking, rewinding, and
 managed authentication.
+
+### Model-specific reasoning effort
+
+Use the pure helper for a selected slug, including a custom model or one that has
+not been fetched. It does not instantiate a client or start a process:
+
+```php
+use Develate\AntigravityCli\Value\ModelCapabilities;
+
+$showReasoningDropdown = ModelCapabilities::supportsReasoningEffort($selectedModel);
+// false for 'claude-opus-4-6-thinking' or 'gemini-3.8-flash-high'
+// true for 'gemini-3.8-flash', unknown/custom slugs, null and ''
+```
+
+Models returned by `$agy->models()` also expose `$model->supportsReasoningEffort()`.
+The helper means **separately adjustable effort**, not whether the model reasons.
+
+`agy models` in CLI 1.1.27 returns only slug/label pairs, with no capability metadata.
+`ModelCapabilities` centralizes the fallback rules, verified on that version using
+`agy --print=/usage --output-format=json --model=SLUG --effort=LEVEL` (no model turn):
+
+- `claude-opus-4-6-thinking` and `claude-sonnet-4-6` reject `--effort`.
+- Explicit `gemini-…-low`, `-medium` and `-high` variants reject a conflicting
+  effort and accept a matching one. They return false because their effort is
+  already fixed by the slug.
+- Base `gemini-3.8-flash` accepts `--effort=high`.
+
+Matching is case-insensitive. Other Claude or “thinking” names are not excluded.
+Unknown/custom names return true to preserve pass-through behavior; this is not a
+guarantee that the CLI recognizes a model. Null and empty selections also return
+true: the SDK cannot resolve the account's default without a process, so an
+explicitly selected effort is still sent and the CLI validates it.
+
+Command construction uses this same helper to omit `--effort` for unsupported
+models, including saved effort values on resumed sessions. The selected model,
+other options, and the immutable session options are preserved. Null effort always
+omits the flag, for every model.
 
 ## Reports and commands
 

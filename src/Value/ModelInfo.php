@@ -9,4 +9,9 @@ final readonly class ModelInfo
     public function __construct(public string $slug, public string $label)
     {
     }
+
+    public function supportsReasoningEffort(): bool
+    {
+        return ModelCapabilities::supportsReasoningEffort($this->slug);
+    }
 }
