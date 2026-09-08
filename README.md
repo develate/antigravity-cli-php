@@ -245,6 +245,38 @@ $agy->install();  // writes to the shell profile
 `mcp()` and `plugins()` edit configuration shared by every Antigravity session on
 the machine.
 
+### MCP servers
+
+Register local stdio servers with arguments and environment variables, or remote
+HTTP servers with request headers:
+
+```php
+$agy->mcp()->addStdio('filesystem', 'npx', [
+    '-y', '@modelcontextprotocol/server-filesystem', '/srv/project',
+]);
+$agy->mcp()->addStdio('tools', 'my-mcp-server', env: ['API_KEY' => $apiKey]);
+$agy->mcp()->addHttp('api', 'https://example.com/mcp', headers: [
+    'Authorization' => 'Bearer '.$token,
+]);
+
+$agy->mcp()->list(); // configured server names
+$agy->mcp()->disable('api');
+$agy->mcp()->enable('api');
+$agy->mcp()->remove('api');
+```
+
+Adding an existing name updates its configuration. Mutation methods return
+`CommandOutput` and throw `ProcessFailed` when the CLI exits unsuccessfully.
+The existing `add('name', ['command', 'argument'])` API also accepts named
+`env`, `headers`, and `type` (`stdio` or `http`) arguments. Values are passed as
+individual process arguments, without shell interpolation.
+
+These operations use the CLI's shared user configuration. Configure servers
+before starting sessions; the SDK does not inject temporary MCP settings into
+individual turns. Credentials supplied here are persisted by the CLI along with
+the server configuration. This API follows `agy mcp add --help` in CLI 1.1.27
+and the [official MCP command release notes](https://antigravity.google/changelog).
+
 ## Compatibility
 
 ```php
