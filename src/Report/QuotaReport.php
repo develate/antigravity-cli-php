@@ -19,12 +19,13 @@ final readonly class QuotaReport
         public array $entries,
         public string $text,
         public string $diagnostics = '',
+        public ?int $exitCode = null,
     ) {
     }
 
-    public static function unavailable(string $text = '', string $diagnostics = ''): self
+    public static function unavailable(string $text = '', string $diagnostics = '', ?int $exitCode = null): self
     {
-        return new self(false, [], $text, $diagnostics);
+        return new self(false, [], $text, $diagnostics, $exitCode);
     }
 
     public function entryFor(string $group): ?QuotaEntry

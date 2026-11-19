@@ -8,6 +8,7 @@ use Develate\AntigravityCli\Exception\UnsupportedCapability;
 
 final readonly class CapabilitySet
 {
+    /** Interface support only; does not probe host containment, account access or authentication. */
     public function supports(Capability $capability): bool
     {
         return $capability->isSupported();

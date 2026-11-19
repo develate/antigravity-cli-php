@@ -13,6 +13,8 @@ namespace Develate\AntigravityCli\Value;
  */
 enum ExecutionMode: string
 {
+    case Default = 'default';
+    case Auto = 'auto';
     case AcceptEdits = 'accept-edits';
     case Plan = 'plan';
 }

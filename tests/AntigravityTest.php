@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Develate\AntigravityCli\Tests;
 
 use Develate\AntigravityCli\Antigravity;
+use Develate\AntigravityCli\Cli\CommandOutput;
+use Develate\AntigravityCli\Cli\CommandRunner;
 use Develate\AntigravityCli\Exception\InvalidOptions;
 use Develate\AntigravityCli\SessionOptions;
 use Develate\AntigravityCli\Tests\Support\FakeCli;
@@ -82,6 +84,7 @@ final class AntigravityTest extends TestCase
         self::assertTrue($quota->available);
         self::assertSame('Gemini Models', $quota->entries[0]->group);
         self::assertSame(97.0, $quota->entries[0]->remainingPercent);
+        self::assertSame(0, $quota->exitCode);
     }
 
     public function test_quota_from_a_silent_binary_is_unavailable(): void
@@ -90,6 +93,25 @@ final class AntigravityTest extends TestCase
 
         self::assertFalse($quota->available);
         self::assertSame([], $quota->entries);
+    }
+
+    public function test_api_key_quota_diagnostics_and_exit_two_are_retained(): void
+    {
+        $runner = $this->createMock(CommandRunner::class);
+        $runner->expects(self::exactly(2))->method('tryRun')
+            ->with(['--print=/usage', '--output-format=text'], 120.0)
+            ->willReturn(new CommandOutput(2, '', 'Quota is unavailable with API keys.'));
+        $agy = new Antigravity(runner: $runner);
+
+        $print = $agy->report('/usage');
+        self::assertSame(2, $print->exitCode);
+        self::assertSame('Quota is unavailable with API keys.', $print->diagnostics);
+
+        $quota = $agy->quota();
+        self::assertFalse($quota->available);
+        self::assertSame([], $quota->entries);
+        self::assertSame(2, $quota->exitCode);
+        self::assertSame($print->diagnostics, $quota->diagnostics);
     }
 
     public function test_mcp_servers_are_listed(): void

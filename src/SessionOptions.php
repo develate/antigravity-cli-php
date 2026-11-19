@@ -15,7 +15,9 @@ final readonly class SessionOptions
 {
     /**
      * @param  list<string>  $additionalDirectories  extra workspace roots (`--add-dir`)
-     * @param  bool  $dangerouslyBypassPermissions  auto-approve every permission request
+     * @param  ExecutionMode|null  $mode  null inherits CLI settings/defaults (Auto where available)
+     * @param  bool  $sandbox  request --sandbox; does not attest active host containment
+     * @param  bool  $dangerouslyBypassPermissions  skip ordinary approvals; protected-command and administrator restrictions still apply
      */
     public function __construct(
         public string $cwd = '',

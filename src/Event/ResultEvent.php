@@ -32,6 +32,7 @@ final readonly class ResultEvent implements Event
         public Usage $cumulativeUsage,
         public array $deniedActions,
         private array $raw,
+        public ?string $finishedReason = null,
     ) {
     }
 
@@ -63,6 +64,7 @@ final readonly class ResultEvent implements Event
             cumulativeUsage: Usage::fromArray(is_array($result['usage'] ?? null) ? $result['usage'] : null),
             deniedActions: $denied,
             raw: $payload,
+            finishedReason: is_string($result['finished_reason'] ?? null) ? $result['finished_reason'] : null,
         );
     }
 

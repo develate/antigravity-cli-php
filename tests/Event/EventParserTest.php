@@ -68,6 +68,20 @@ final class EventParserTest extends TestCase
         self::assertSame('usage', $event->command);
     }
 
+    public function test_finished_reasons_preserve_unknown_strings_and_ignore_non_strings(): void
+    {
+        foreach (['print_timeout', 'interrupted', 'error', 'future_reason', null, 123, ['invalid']] as $reason) {
+            $payload = ['event' => 'result', 'result' => ['status' => 'ERROR', 'finished_reason' => $reason]];
+            $event = (new EventParser)->parseLine(json_encode($payload, JSON_THROW_ON_ERROR))[0];
+
+            self::assertInstanceOf(ResultEvent::class, $event);
+            self::assertSame(is_string($reason) ? $reason : null, $event->finishedReason);
+            self::assertSame($payload, $event->raw());
+        }
+
+        self::assertNull(ResultEvent::fromArray(['event' => 'result', 'result' => []])->finishedReason);
+    }
+
     /**
      * A newer CLI adding an event is not an error; dropping it would lose data
      * a caller may still want.

@@ -42,6 +42,7 @@ final readonly class Result
         public ?InitEvent $init,
         public RunMetadata $metadata,
         public ?int $exitCode,
+        public ?string $finishedReason = null,
     ) {
     }
 

@@ -43,6 +43,18 @@ final class ReportParserTest extends TestCase
         self::assertFalse((new ReportParser)->parseQuota('')->available);
     }
 
+    public function test_a_failed_quota_command_cannot_supply_account_quota(): void
+    {
+        $text = "Gemini Models\tWeekly Limit Remaining\t97%\n";
+        $report = (new ReportParser)->parseQuota($text, 'Quota is unavailable with API keys.', 2);
+
+        self::assertFalse($report->available);
+        self::assertSame([], $report->entries);
+        self::assertSame($text, $report->text);
+        self::assertSame('Quota is unavailable with API keys.', $report->diagnostics);
+        self::assertSame(2, $report->exitCode);
+    }
+
     public function test_a_row_with_missing_columns_keeps_what_it_has(): void
     {
         $report = (new ReportParser)->parseQuota("Gemini Models\tWeekly Limit Remaining\n");

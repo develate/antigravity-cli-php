@@ -197,6 +197,7 @@ final class ResultBuilder
             init: $this->init,
             metadata: $metadata,
             exitCode: $exitCode,
+            finishedReason: $this->result?->finishedReason,
         );
     }
 }

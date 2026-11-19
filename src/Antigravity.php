@@ -229,7 +229,7 @@ final class Antigravity
     {
         $report = $this->report('/usage', $timeout);
 
-        return (new ReportParser)->parseQuota($report->text, $report->diagnostics);
+        return (new ReportParser)->parseQuota($report->text, $report->diagnostics, $report->exitCode);
     }
 
     /**
@@ -247,6 +247,7 @@ final class Antigravity
             command: $slashCommand,
             text: $output->stdout,
             diagnostics: $output->stderr,
+            exitCode: $output->exitCode,
         );
     }
 

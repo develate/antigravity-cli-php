@@ -15,6 +15,7 @@ use Develate\AntigravityCli\Tests\Support\Fixtures;
 use Develate\AntigravityCli\Tests\Support\ScriptedTransport;
 use Develate\AntigravityCli\Transport\RunMode;
 use Develate\AntigravityCli\Value\ResultStatus;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 final class SessionTest extends TestCase
@@ -29,6 +30,7 @@ final class SessionTest extends TestCase
         self::assertSame(Fixtures::CONVERSATION, $result->conversationId);
         self::assertSame(ResultStatus::Success, $result->status);
         self::assertTrue($result->isSuccess());
+        self::assertNull($result->finishedReason);
     }
 
     public function test_the_conversation_id_comes_from_the_cli_and_is_reused(): void
@@ -47,6 +49,40 @@ final class SessionTest extends TestCase
         self::assertNull($transport->requests[0]->conversationId);
         self::assertSame(RunMode::Resume, $transport->requests[1]->mode);
         self::assertSame(Fixtures::CONVERSATION, $transport->requests[1]->conversationId);
+    }
+
+    #[DataProvider('earlyResults')]
+    public function test_early_termination_keeps_partial_text_reason_status_and_exit_code(string $reason, string $status, int $exitCode): void
+    {
+        $line = json_encode(['event' => 'result', 'result' => [
+            'conversation_id' => 'partial',
+            'status' => $status,
+            'response' => 'Partial answer',
+            'finished_reason' => $reason,
+        ]], JSON_THROW_ON_ERROR);
+        $run = (new Session(new ScriptedTransport([[$line]], $exitCode), new SessionOptions))->stream('anything');
+        $result = $run->result();
+
+        self::assertSame('Partial answer', $result->text);
+        self::assertSame($reason, $result->finishedReason);
+        self::assertSame($exitCode, $result->exitCode);
+        self::assertSame(ResultStatus::parse($status), $result->status);
+
+        if ($status === 'SUCCESS') {
+            self::assertSame($result, $run->resultOrFail());
+        } else {
+            $this->expectException(RunFailed::class);
+            $run->resultOrFail();
+        }
+    }
+
+    public static function earlyResults(): iterable
+    {
+        yield 'timeout error exit zero' => ['print_timeout', 'ERROR', 0];
+        yield 'timeout error exit two' => ['print_timeout', 'ERROR', 2];
+        yield 'interrupted' => ['interrupted', 'ERROR', 1];
+        yield 'unknown reason' => ['future_reason', 'ERROR', 7];
+        yield 'success stays success' => ['future_reason', 'SUCCESS', 2];
     }
 
     /**

@@ -12,8 +12,12 @@ namespace Develate\AntigravityCli\Report;
  */
 final class ReportParser
 {
-    public function parseQuota(string $text, string $diagnostics = ''): QuotaReport
+    public function parseQuota(string $text, string $diagnostics = '', ?int $exitCode = null): QuotaReport
     {
+        if ($exitCode !== null && $exitCode !== 0) {
+            return QuotaReport::unavailable($text, $diagnostics, $exitCode);
+        }
+
         $entries = [];
 
         foreach (preg_split('/\r?\n/', $text) ?: [] as $line) {
@@ -37,8 +41,8 @@ final class ReportParser
         }
 
         return $entries === []
-            ? QuotaReport::unavailable($text, $diagnostics)
-            : new QuotaReport(true, $entries, $text, $diagnostics);
+            ? QuotaReport::unavailable($text, $diagnostics, $exitCode)
+            : new QuotaReport(true, $entries, $text, $diagnostics, $exitCode);
     }
 
     private static function percent(?string $value): ?float

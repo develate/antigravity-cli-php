@@ -19,6 +19,7 @@ final readonly class PrintReport
         public string $text,
         public array $data = [],
         public string $diagnostics = '',
+        public ?int $exitCode = null,
     ) {
     }
 

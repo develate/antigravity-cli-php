@@ -23,6 +23,7 @@ enum Capability: string
     case ReasoningEffort = 'reasoning_effort';
     case StructuredOutput = 'structured_output';
     case AdditionalDirectories = 'additional_directories';
+    /** The --sandbox flag is supported; active containment depends on the host. */
     case Sandbox = 'sandbox';
     case PermissionBypass = 'permission_bypass';
     case McpManagement = 'mcp_management';

@@ -102,6 +102,9 @@ final class ArgumentBuilderTest extends TestCase
             'claude-opus-4-6-thinking', 'CLAUDE-OPUS-4-6-THINKING', 'claude-sonnet-4-6',
             'gemini-3.8-flash-low', 'gemini-3.8-flash-medium', 'gemini-3.8-flash-high',
             'GEMINI-3.1-PRO-HIGH', 'gemini-future-medium',
+            'gemini-4-neon-xhigh', 'GEMINI-4-HYDROGEN-XHIGH', 'gemini-future-max',
+            'gemini-pro-orchestrator', 'gemini-pro-orchestrator-argon',
+            'gemini-pro-orchestrator-neon', 'GEMINI-PRO-ORCHESTRATOR-NEON',
         ] as $model) {
             yield $model => [$model];
         }
@@ -131,7 +134,7 @@ final class ArgumentBuilderTest extends TestCase
         foreach ([
             'gemini-3.8-flash', 'gemini-3.1-pro', 'custom-model', 'custom-high',
             'vendor/custom-thinking', 'claude-future-thinking', 'claude-opus-4-6',
-            'gpt-oss-120b-medium',
+            'gpt-oss-120b-medium', 'gemini-pro-orchestrator-custom',
         ] as $model) {
             yield $model => [$model];
         }
@@ -145,6 +148,51 @@ final class ArgumentBuilderTest extends TestCase
         ], (new ArgumentBuilder)->stream($this->request(
             session: new SessionOptions(model: 'gemini-3.8-flash'),
         )));
+    }
+
+    #[DataProvider('newEfforts')]
+    public function test_extended_efforts_are_passed_through_for_base_and_default_models(?string $model, Effort $effort): void
+    {
+        foreach ([RunMode::Start, RunMode::Resume] as $mode) {
+            $command = (new ArgumentBuilder)->stream($this->request(
+                mode: $mode,
+                conversationId: 'saved-conversation',
+                session: new SessionOptions(model: $model, effort: $effort),
+            ));
+
+            self::assertContains('--effort='.$effort->value, $command);
+        }
+    }
+
+    public static function newEfforts(): iterable
+    {
+        yield 'neon xhigh' => ['gemini-4-neon', Effort::XHigh];
+        yield 'hydrogen xhigh' => ['gemini-4-hydrogen', Effort::XHigh];
+        yield 'custom max' => ['custom-model', Effort::Max];
+        yield 'null default' => [null, Effort::XHigh];
+        yield 'empty default' => ['', Effort::Max];
+    }
+
+    #[DataProvider('executionModes')]
+    public function test_explicit_modes_override_the_inherited_default(ExecutionMode $mode): void
+    {
+        foreach ([RunMode::Start, RunMode::Resume] as $runMode) {
+            $command = (new ArgumentBuilder)->stream($this->request(
+                mode: $runMode,
+                conversationId: 'saved-conversation',
+                session: (new SessionOptions)->withMode($mode),
+            ));
+
+            self::assertContains('--mode='.$mode->value, $command);
+        }
+    }
+
+    public static function executionModes(): iterable
+    {
+        yield 'default' => [ExecutionMode::Default];
+        yield 'auto' => [ExecutionMode::Auto];
+        yield 'accept edits' => [ExecutionMode::AcceptEdits];
+        yield 'plan' => [ExecutionMode::Plan];
     }
 
     public function test_resuming_names_the_conversation_explicitly(): void
